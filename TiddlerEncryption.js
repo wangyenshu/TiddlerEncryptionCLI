@@ -4,8 +4,7 @@ const crypto = require('crypto');
 const readline = require('readline');
 
 // --- Helper Functions from Original Plugin ---
-// These are the core TEA encryption/decryption functions and helpers,
-// ported directly from the TiddlyWiki plugin.
+// These are the core TEA encryption/decryption functions and helpers.
 
 function strToLongs(s) {
     const l = new Array(Math.ceil(s.length / 4));
@@ -82,13 +81,23 @@ function stringToHext(theString) {
         const theHex = theString.charCodeAt(i).toString(16);
         theResult += theHex.length < 2 ? `0${theHex}` : theHex;
     }
-    return theResult;
+    // Add newlines for readability, just like the original plugin
+    let formattedResult = '';
+    for (let i = 0; i < theResult.length; i += 64) {
+        formattedResult += theResult.substring(i, i + 64);
+        if (i + 64 < theResult.length) {
+            formattedResult += '\n';
+        }
+    }
+    return formattedResult;
 }
 
 function hexToString(theString) {
     let theResult = "";
-    for (let i = 0; i < theString.length; i += 2) {
-        theResult += String.fromCharCode(parseInt(theString.substr(i, 2), 16));
+    // Remove all whitespace and newlines from the hex string
+    const sanitizedHex = theString.replace(/\s+/g, '');
+    for (let i = 0; i < sanitizedHex.length; i += 2) {
+        theResult += String.fromCharCode(parseInt(sanitizedHex.substr(i, 2), 16));
     }
     return theResult;
 }
@@ -125,8 +134,7 @@ async function runCli() {
 
     try {
         const fileContent = fs.readFileSync(filePath, 'utf8');
-
-        // IMPROVED REGEX to handle newlines before <pre> and </div>
+        
         const tiddlerRegex = new RegExp(`(<div[^>]*tags=")([^"]+)(".*?>[\\s\\S]*?<pre>)([\\s\\S]*?)(<\\/pre>[\\s\\S]*<\\/div>)`);
         const match = fileContent.match(tiddlerRegex);
 
@@ -150,8 +158,7 @@ async function runCli() {
             if (!tagsArray.includes(encryptTag)) {
                 throw new Error(`Tiddler does not have the tag '${encryptTag}'.`);
             }
-
-            // The content is already captured correctly by the improved regex
+            
             originalContent = content.trim();
 
             const decryptedSHA1 = hexSha1Str(originalContent);
@@ -174,7 +181,7 @@ async function runCli() {
             }
 
             const [_, checksum, encryptedHexText] = contentMatch;
-            const encryptedText = hexToString(encryptedHexText.replace(/\n/g, ''));
+            const encryptedText = hexToString(encryptedHexText);
             const decryptedText = TEAdecrypt(encryptedText, password);
             const thisDecryptedSHA1 = hexSha1Str(decryptedText);
 
